@@ -1,0 +1,457 @@
+Build a production-ready web application called TradeMind AI.
+
+TradeMind AI is an AI Trading Operating System designed specifically for the Bitget AI Base Camp Hackathon Trading Agent track.
+
+The platform combines:
+
+* Autonomous Trading Intelligence
+* Portfolio Analysis
+* Trade Execution (Simulation)
+* Long-Term Memory
+* Behavioral Analytics
+* Personalized Coaching
+* Trade Replay
+
+The system should not only help users discover and execute trades but also explain historical performance and improve trader behavior over time.
+
+========================================================
+HACKATHON COMPLIANCE REQUIREMENTS
+=================================
+
+This project must fully align with Bitget's judging criteria:
+
+Perception → Decision → Execution → Risk Management
+
+The application must produce verifiable simulated trading records and provide a fully runnable demo.
+
+The implementation must integrate Bitget Agent Hub concepts and architecture.
+
+========================================================
+BITGET INTEGRATION REQUIREMENTS
+===============================
+
+Integrate the following Bitget Skill Hub modules as independent data sources:
+
+1. macro-analyst
+
+* Fed policy
+* macro trends
+* BTC correlation
+* risk-on/risk-off signals
+
+2. market-intel
+
+* whale activity
+* ETF flows
+* DeFi TVL
+* institutional movement
+
+3. news-briefing
+
+* crypto news aggregation
+* narrative detection
+* event monitoring
+
+4. sentiment-analyst
+
+* fear and greed
+* long short ratios
+* funding rates
+* crowd positioning
+
+5. technical-analysis
+
+* RSI
+* MACD
+* Bollinger Bands
+* trend strength
+* support resistance
+
+Create a Market Intelligence Orchestrator that combines outputs from all skills into one unified analysis.
+
+========================================================
+AGENT DECISION ENGINE
+=====================
+
+Create an autonomous decision engine.
+
+Inputs:
+
+* macro signals
+* onchain signals
+* sentiment signals
+* technical signals
+* news signals
+
+Outputs:
+
+* bullish score
+* bearish score
+* confidence score
+* risk score
+* recommendation
+
+Example:
+
+SOLANA
+
+Bullish Score: 87/100
+
+Reasons:
+
+* whale accumulation
+* positive funding
+* strong momentum
+* positive news flow
+
+Action:
+BUY
+
+Confidence:
+83%
+
+========================================================
+CHAT INTERFACE
+==============
+
+Create a ChatGPT-like interface.
+
+Users can ask:
+
+Find opportunities on Solana
+
+Analyze Bitcoin
+
+What should I trade today?
+
+Show my portfolio weaknesses
+
+Why am I losing money?
+
+What mistakes do I keep making?
+
+What is my best performing strategy?
+
+Should I enter this trade?
+
+The AI must respond using:
+
+1. Summary
+2. Evidence
+3. Risk Analysis
+4. Confidence Score
+5. Suggested Action
+
+========================================================
+TRADE JOURNAL MEMORY
+====================
+
+Create long-term memory.
+
+Store:
+
+trade_id
+asset
+direction
+entry_price
+exit_price
+entry_reason
+market_conditions
+AI recommendation
+user action
+result
+PnL
+timestamp
+
+Every trade must automatically become a journal entry.
+
+========================================================
+BEHAVIORAL ANALYTICS
+====================
+
+Continuously analyze historical trades.
+
+Detect:
+
+FOMO trading
+
+Revenge trading
+
+Overtrading
+
+Holding losers too long
+
+Cutting winners too early
+
+Ignoring stop losses
+
+Position sizing mistakes
+
+Generate recurring behavior patterns.
+
+========================================================
+PERSONALIZED COACH
+==================
+
+The AI acts as a trading mentor.
+
+Examples:
+
+You entered 14 trades after assets had already gained more than 12%.
+
+71% became losses.
+
+Recommendation:
+Wait for pullbacks before entering.
+
+Generate:
+
+Daily report
+
+Weekly report
+
+Monthly report
+
+Improvement recommendations
+
+========================================================
+TRADE REPLAY SYSTEM
+===================
+
+This is a flagship feature.
+
+Users can ask:
+
+Why did I lose money last month?
+
+Replay Trade #37
+
+What happened during my SOL trade?
+
+The AI reconstructs the complete timeline.
+
+Replay includes:
+
+Market Context
+
+News Events
+
+Sentiment Conditions
+
+Whale Activity
+
+Technical Indicators
+
+User Reasoning
+
+AI Recommendation
+
+Actual Outcome
+
+Lessons Learned
+
+Example:
+
+Trade Replay
+
+Date:
+May 12
+
+Asset:
+SOL
+
+Entry:
+$145
+
+Market Conditions:
+Bullish sentiment but weakening momentum
+
+Whale Activity:
+Large exchange deposits detected
+
+AI Recommendation:
+Wait
+
+User Action:
+Bought immediately
+
+Outcome:
+-12%
+
+Lesson:
+Entered before confirmation and ignored risk signals.
+
+The replay should feel like watching a post-match analysis of a football game.
+
+========================================================
+PAPER TRADING ENGINE
+====================
+
+Implement:
+
+Open Position
+
+Close Position
+
+Portfolio Tracking
+
+PnL
+
+Win Rate
+
+Drawdown
+
+Risk Exposure
+
+No real capital required.
+
+Everything can run in simulation mode.
+
+========================================================
+RISK MANAGEMENT
+===============
+
+Generate:
+
+Risk Score
+
+Portfolio Health Score
+
+Maximum Exposure Warnings
+
+Stop Loss Suggestions
+
+Position Size Suggestions
+
+Concentration Risk Alerts
+
+========================================================
+DASHBOARD
+=========
+
+Create:
+
+Portfolio Overview
+
+Market Opportunities
+
+Open Positions
+
+Trade Journal
+
+Behavior Analytics
+
+AI Insights
+
+Trade Replay
+
+Coaching Reports
+
+Risk Center
+
+========================================================
+DATABASE
+========
+
+Use Supabase.
+
+Tables:
+
+users
+
+trades
+
+trade_journal
+
+market_snapshots
+
+ai_analysis
+
+behavior_patterns
+
+trade_replays
+
+portfolio_snapshots
+
+risk_reports
+
+coaching_reports
+
+========================================================
+AI
+==
+
+Use Qwen API as primary model.
+
+Design architecture so Bitget Qwen endpoint can be plugged in directly:
+
+https://hackathon.bitgetops.com/v1
+
+Model:
+qwen3.6-plus
+
+========================================================
+DEMO REQUIREMENTS
+=================
+
+Generate realistic mock data.
+
+Create:
+
+100 sample trades
+
+30 replay examples
+
+sample portfolios
+
+sample coaching reports
+
+sample risk reports
+
+sample opportunity analyses
+
+The application must be fully demoable even if Bitget APIs are unavailable.
+
+========================================================
+DELIVERABLES
+============
+
+Produce:
+
+Complete Next.js application
+
+TypeScript codebase
+
+Responsive UI
+
+Supabase schema
+
+Seed data
+
+README
+
+Architecture documentation
+
+Deployment instructions
+
+Hackathon demo instructions
+
+3-minute demo flow
+
+========================================================
+SUCCESS METRIC
+==============
+
+The final product should clearly demonstrate:
+
+Perception
+→ Decision
+→ Execution
+→ Risk Management
+→ Memory
+→ Coaching
+→ Continuous Improvement
+
+The AI should not only trade.
+
+It should remember every trade, explain every outcome, and make the user a better trader over time.
