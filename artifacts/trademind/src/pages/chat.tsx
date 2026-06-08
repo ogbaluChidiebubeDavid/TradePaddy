@@ -178,7 +178,7 @@ export default function Chat() {
           <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div className="max-w-lg w-full space-y-8 text-center">
               <div>
-                <h2 className="text-2xl font-bold font-mono text-foreground mb-2">TradeMind AI</h2>
+                <h2 className="text-2xl font-bold font-mono text-foreground mb-2">TradePaddy AI</h2>
                 <p className="text-sm text-muted-foreground font-mono">
                   Your expert AI trading mentor. Ask anything about your portfolio, strategies, or market conditions.
                 </p>

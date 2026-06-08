@@ -10,9 +10,13 @@ import {
   GraduationCap, 
   PlayCircle, 
   MessageSquare, 
-  AlertTriangle 
+  AlertTriangle,
+  LogOut,
+  Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Activity },
@@ -30,11 +34,20 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const [location] = useLocation();
+  const { uid, logout } = useAuth();
+  const { toast } = useToast();
+
+  const handleDisconnect = async () => {
+    await logout();
+    toast({ title: "Disconnected from Bitget" });
+  };
+
+  const shortUid = uid ? uid.slice(0, 8) + "..." : "Connected";
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col h-full shrink-0">
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <span className="font-mono text-xl font-bold tracking-tight text-primary">TradeMind<span className="text-muted-foreground opacity-50">.ai</span></span>
+        <span className="font-mono text-xl font-bold tracking-tight text-primary">TradePaddy<span className="text-muted-foreground opacity-50">.ai</span></span>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
@@ -56,16 +69,21 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="p-4 border-t border-border shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary font-bold">
-            U
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">User Quant</span>
-            <span className="text-xs text-muted-foreground">Pro Plan</span>
+      <div className="p-4 border-t border-border shrink-0 space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <Wifi className="w-3.5 h-3.5 text-green-500 shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium text-green-500">Bitget Connected</span>
+            <span className="text-xs text-muted-foreground truncate">{shortUid}</span>
           </div>
         </div>
+        <button
+          onClick={handleDisconnect}
+          className="flex items-center gap-2 w-full px-3 py-1.5 rounded-sm text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Disconnect account
+        </button>
       </div>
     </aside>
   );

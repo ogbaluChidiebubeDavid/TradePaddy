@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import tradesRouter from "./trades";
 import journalRouter from "./journal";
 import portfolioRouter from "./portfolio";
@@ -10,10 +11,12 @@ import replayRouter from "./replay";
 import chatRouter from "./chat";
 import riskRouter from "./risk";
 import dashboardRouter from "./dashboard";
+import bitgetRouter from "./bitget-account";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(dashboardRouter);
 router.use(tradesRouter);
 router.use(journalRouter);
@@ -24,5 +27,6 @@ router.use(coachingRouter);
 router.use(replayRouter);
 router.use(chatRouter);
 router.use(riskRouter);
+router.use(bitgetRouter);
 
 export default router;

@@ -1,9 +1,11 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import Connect from "@/pages/connect";
 
 import Dashboard from "@/pages/dashboard";
 import Portfolio from "@/pages/portfolio";
@@ -19,7 +21,25 @@ import Risk from "@/pages/risk";
 
 const queryClient = new QueryClient();
 
-function Router() {
+function AuthGate() {
+  const { connected, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="font-mono text-3xl font-bold text-primary">TradePaddy<span className="text-muted-foreground opacity-50">.ai</span></div>
+          <div className="text-muted-foreground text-sm animate-pulse">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!connected) {
+    return <Connect />;
+  }
+
   return (
     <AppLayout>
       <Switch>
@@ -44,10 +64,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AuthGate />
+          </WouterRouter>
+          <Toaster />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
