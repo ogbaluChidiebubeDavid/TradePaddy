@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "TradeMind AI"
+version = "1.0.0"
+id = "artifacts/trademind"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19593
+
+[services.development]
+run = "pnpm --filter @workspace/trademind run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trademind", "run", "build" ]
+publicDir = "artifacts/trademind/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19593"
+BASE_PATH = "/"

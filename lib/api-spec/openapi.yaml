@@ -3,20 +3,42 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TradeMind AI - AI Trading Operating System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: trades
+    description: Paper trading operations
+  - name: journal
+    description: Trade journal operations
+  - name: portfolio
+    description: Portfolio tracking operations
+  - name: analysis
+    description: AI market analysis
+  - name: behavior
+    description: Behavioral analytics
+  - name: coaching
+    description: Personalized coaching
+  - name: replay
+    description: Trade replay system
+  - name: chat
+    description: AI chat interface
+  - name: opportunities
+    description: Market opportunities
+  - name: risk
+    description: Risk management
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +46,577 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Dashboard ──────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent trading activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  # ── Trades (Paper Trading) ─────────────────────────────────────
+  /trades:
+    get:
+      operationId: listTrades
+      tags: [trades]
+      summary: List all trades
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, closed, all]
+          required: false
+        - in: query
+          name: asset
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: List of trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trade"
+    post:
+      operationId: createTrade
+      tags: [trades]
+      summary: Open a new paper trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeInput"
+      responses:
+        "201":
+          description: Trade created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+
+  /trades/{id}:
+    get:
+      operationId: getTrade
+      tags: [trades]
+      summary: Get a specific trade
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trade details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTrade
+      tags: [trades]
+      summary: Update a trade (close position)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeUpdate"
+      responses:
+        "200":
+          description: Updated trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+
+  /trades/stats/summary:
+    get:
+      operationId: getTradeStats
+      tags: [trades]
+      summary: Get aggregated trade statistics
+      responses:
+        "200":
+          description: Trade statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeStats"
+
+  # ── Trade Journal ─────────────────────────────────────────────
+  /journal:
+    get:
+      operationId: listJournalEntries
+      tags: [journal]
+      summary: List trade journal entries
+      parameters:
+        - in: query
+          name: asset
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          required: false
+      responses:
+        "200":
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntry"
+
+  /journal/{id}:
+    get:
+      operationId: getJournalEntry
+      tags: [journal]
+      summary: Get a journal entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateJournalEntry
+      tags: [journal]
+      summary: Update notes on a journal entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JournalEntryUpdate"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  # ── Portfolio ─────────────────────────────────────────────────
+  /portfolio:
+    get:
+      operationId: getPortfolio
+      tags: [portfolio]
+      summary: Get current portfolio snapshot
+      responses:
+        "200":
+          description: Portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+
+  /portfolio/history:
+    get:
+      operationId: getPortfolioHistory
+      tags: [portfolio]
+      summary: Get portfolio value history
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+          required: false
+      responses:
+        "200":
+          description: Portfolio history snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortfolioSnapshot"
+
+  /portfolio/positions:
+    get:
+      operationId: getOpenPositions
+      tags: [portfolio]
+      summary: Get all open positions
+      responses:
+        "200":
+          description: Open positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Position"
+
+  # ── Market Analysis (AI) ──────────────────────────────────────
+  /analysis:
+    get:
+      operationId: listAnalyses
+      tags: [analysis]
+      summary: List AI market analyses
+      parameters:
+        - in: query
+          name: asset
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          required: false
+      responses:
+        "200":
+          description: Market analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketAnalysis"
+    post:
+      operationId: createAnalysis
+      tags: [analysis]
+      summary: Request a new AI market analysis for an asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisRequest"
+      responses:
+        "201":
+          description: Analysis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketAnalysis"
+
+  /analysis/{id}:
+    get:
+      operationId: getAnalysis
+      tags: [analysis]
+      summary: Get a specific market analysis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Market analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketAnalysis"
+
+  /analysis/opportunities/top:
+    get:
+      operationId: getTopOpportunities
+      tags: [opportunities]
+      summary: Get top market opportunities across assets
+      responses:
+        "200":
+          description: Top opportunities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Opportunity"
+
+  # ── Behavioral Analytics ───────────────────────────────────────
+  /behavior/patterns:
+    get:
+      operationId: getBehaviorPatterns
+      tags: [behavior]
+      summary: Get detected behavioral patterns
+      responses:
+        "200":
+          description: Behavior patterns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BehaviorPattern"
+
+  /behavior/summary:
+    get:
+      operationId: getBehaviorSummary
+      tags: [behavior]
+      summary: Get behavioral analytics summary
+      responses:
+        "200":
+          description: Behavior summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BehaviorSummary"
+
+  # ── Coaching ───────────────────────────────────────────────────
+  /coaching/reports:
+    get:
+      operationId: listCoachingReports
+      tags: [coaching]
+      summary: List coaching reports
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+          required: false
+      responses:
+        "200":
+          description: Coaching reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachingReport"
+    post:
+      operationId: generateCoachingReport
+      tags: [coaching]
+      summary: Generate a new coaching report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachingReportRequest"
+      responses:
+        "201":
+          description: Report generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingReport"
+
+  /coaching/reports/{id}:
+    get:
+      operationId: getCoachingReport
+      tags: [coaching]
+      summary: Get a coaching report
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Coaching report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingReport"
+
+  # ── Trade Replay ───────────────────────────────────────────────
+  /replay:
+    get:
+      operationId: listReplays
+      tags: [replay]
+      summary: List trade replays
+      responses:
+        "200":
+          description: Trade replays
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TradeReplay"
+    post:
+      operationId: createReplay
+      tags: [replay]
+      summary: Generate a trade replay for a journal entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplayRequest"
+      responses:
+        "201":
+          description: Replay created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeReplay"
+
+  /replay/{id}:
+    get:
+      operationId: getReplay
+      tags: [replay]
+      summary: Get a specific trade replay
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trade replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeReplay"
+
+  # ── Chat ────────────────────────────────────────────────────────
+  /chat:
+    get:
+      operationId: listChatSessions
+      tags: [chat]
+      summary: List chat sessions
+      responses:
+        "200":
+          description: Chat sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatSession"
+    post:
+      operationId: createChatSession
+      tags: [chat]
+      summary: Create a new chat session
+      responses:
+        "201":
+          description: Chat session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+
+  /chat/{sessionId}/messages:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get messages for a chat session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message and get AI response
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "201":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  # ── Risk Management ────────────────────────────────────────────
+  /risk/report:
+    get:
+      operationId: getRiskReport
+      tags: [risk]
+      summary: Get current risk report
+      responses:
+        "200":
+          description: Risk report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskReport"
+
+  /risk/history:
+    get:
+      operationId: getRiskHistory
+      tags: [risk]
+      summary: Get historical risk reports
+      responses:
+        "200":
+          description: Risk report history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RiskReport"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +627,672 @@ components:
       required:
         - status
 
+    # ── Dashboard ────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      required: [totalPnl, winRate, totalTrades, openPositions, portfolioValue, portfolioHealthScore, riskScore, bestAsset, worstAsset]
+      properties:
+        totalPnl:
+          type: number
+        winRate:
+          type: number
+        totalTrades:
+          type: integer
+        openPositions:
+          type: integer
+        portfolioValue:
+          type: number
+        portfolioHealthScore:
+          type: number
+        riskScore:
+          type: number
+        bestAsset:
+          type: string
+        worstAsset:
+          type: string
+        weeklyPnl:
+          type: number
+        monthlyPnl:
+          type: number
+
+    ActivityItem:
+      type: object
+      required: [id, type, description, timestamp]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [trade_opened, trade_closed, analysis_generated, coaching_report, replay_created]
+        description:
+          type: string
+        asset:
+          type: ["string", "null"]
+        pnl:
+          type: ["number", "null"]
+        timestamp:
+          type: string
+
+    # ── Trades ───────────────────────────────────────────────────
+    Trade:
+      type: object
+      required: [id, asset, direction, entryPrice, quantity, status, entryReason, marketConditions, aiRecommendation, userAction, createdAt]
+      properties:
+        id:
+          type: integer
+        asset:
+          type: string
+        direction:
+          type: string
+          enum: [long, short]
+        entryPrice:
+          type: number
+        exitPrice:
+          type: ["number", "null"]
+        quantity:
+          type: number
+        status:
+          type: string
+          enum: [open, closed]
+        entryReason:
+          type: string
+        exitReason:
+          type: ["string", "null"]
+        marketConditions:
+          type: string
+        aiRecommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        userAction:
+          type: string
+          enum: [followed, ignored, partial]
+        pnl:
+          type: ["number", "null"]
+        pnlPercent:
+          type: ["number", "null"]
+        stopLoss:
+          type: ["number", "null"]
+        takeProfit:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+        closedAt:
+          type: ["string", "null"]
+
+    TradeInput:
+      type: object
+      required: [asset, direction, entryPrice, quantity, entryReason, marketConditions, aiRecommendation, userAction]
+      properties:
+        asset:
+          type: string
+        direction:
+          type: string
+          enum: [long, short]
+        entryPrice:
+          type: number
+        quantity:
+          type: number
+        entryReason:
+          type: string
+        marketConditions:
+          type: string
+        aiRecommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        userAction:
+          type: string
+          enum: [followed, ignored, partial]
+        stopLoss:
+          type: ["number", "null"]
+        takeProfit:
+          type: ["number", "null"]
+
+    TradeUpdate:
+      type: object
+      properties:
+        exitPrice:
+          type: number
+        exitReason:
+          type: string
+        status:
+          type: string
+          enum: [closed]
+
+    TradeStats:
+      type: object
+      required: [totalTrades, winningTrades, losingTrades, winRate, totalPnl, avgPnl, maxDrawdown, avgHoldingTime, bestTrade, worstTrade]
+      properties:
+        totalTrades:
+          type: integer
+        winningTrades:
+          type: integer
+        losingTrades:
+          type: integer
+        winRate:
+          type: number
+        totalPnl:
+          type: number
+        avgPnl:
+          type: number
+        maxDrawdown:
+          type: number
+        avgHoldingTime:
+          type: string
+        bestTrade:
+          type: number
+        worstTrade:
+          type: number
+
+    # ── Journal ──────────────────────────────────────────────────
+    JournalEntry:
+      type: object
+      required: [id, tradeId, asset, direction, entryPrice, exitPrice, entryReason, marketConditions, aiRecommendation, userAction, result, pnl, pnlPercent, lessonsLearned, createdAt]
+      properties:
+        id:
+          type: integer
+        tradeId:
+          type: integer
+        asset:
+          type: string
+        direction:
+          type: string
+          enum: [long, short]
+        entryPrice:
+          type: number
+        exitPrice:
+          type: number
+        entryReason:
+          type: string
+        exitReason:
+          type: ["string", "null"]
+        marketConditions:
+          type: string
+        aiRecommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        userAction:
+          type: string
+          enum: [followed, ignored, partial]
+        result:
+          type: string
+          enum: [win, loss, breakeven]
+        pnl:
+          type: number
+        pnlPercent:
+          type: number
+        lessonsLearned:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        behaviorFlags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    JournalEntryUpdate:
+      type: object
+      properties:
+        notes:
+          type: string
+        lessonsLearned:
+          type: string
+
+    # ── Portfolio ────────────────────────────────────────────────
+    Portfolio:
+      type: object
+      required: [totalValue, cashBalance, investedValue, totalPnl, totalPnlPercent, dayPnl, dayPnlPercent, positions]
+      properties:
+        totalValue:
+          type: number
+        cashBalance:
+          type: number
+        investedValue:
+          type: number
+        totalPnl:
+          type: number
+        totalPnlPercent:
+          type: number
+        dayPnl:
+          type: number
+        dayPnlPercent:
+          type: number
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Position"
+
+    Position:
+      type: object
+      required: [id, asset, direction, entryPrice, currentPrice, quantity, pnl, pnlPercent, value, openedAt]
+      properties:
+        id:
+          type: integer
+        tradeId:
+          type: integer
+        asset:
+          type: string
+        direction:
+          type: string
+          enum: [long, short]
+        entryPrice:
+          type: number
+        currentPrice:
+          type: number
+        quantity:
+          type: number
+        pnl:
+          type: number
+        pnlPercent:
+          type: number
+        value:
+          type: number
+        stopLoss:
+          type: ["number", "null"]
+        takeProfit:
+          type: ["number", "null"]
+        openedAt:
+          type: string
+
+    PortfolioSnapshot:
+      type: object
+      required: [id, totalValue, totalPnl, timestamp]
+      properties:
+        id:
+          type: integer
+        totalValue:
+          type: number
+        totalPnl:
+          type: number
+        timestamp:
+          type: string
+
+    # ── Market Analysis ──────────────────────────────────────────
+    MarketAnalysis:
+      type: object
+      required: [id, asset, bullishScore, bearishScore, confidenceScore, riskScore, recommendation, summary, evidence, riskAnalysis, macroSignals, sentimentSignals, technicalSignals, onchainSignals, newsSignals, createdAt]
+      properties:
+        id:
+          type: integer
+        asset:
+          type: string
+        bullishScore:
+          type: number
+        bearishScore:
+          type: number
+        confidenceScore:
+          type: number
+        riskScore:
+          type: number
+        recommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        summary:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: string
+        riskAnalysis:
+          type: string
+        macroSignals:
+          type: object
+          properties:
+            fedPolicy:
+              type: string
+            macroTrend:
+              type: string
+            btcCorrelation:
+              type: number
+            riskMode:
+              type: string
+              enum: [risk-on, risk-off, neutral]
+        sentimentSignals:
+          type: object
+          properties:
+            fearGreedIndex:
+              type: number
+            longShortRatio:
+              type: number
+            fundingRate:
+              type: number
+            crowdPositioning:
+              type: string
+        technicalSignals:
+          type: object
+          properties:
+            rsi:
+              type: number
+            macdSignal:
+              type: string
+              enum: [bullish, bearish, neutral]
+            trend:
+              type: string
+              enum: [uptrend, downtrend, sideways]
+            support:
+              type: number
+            resistance:
+              type: number
+        onchainSignals:
+          type: object
+          properties:
+            whaleActivity:
+              type: string
+            etfFlows:
+              type: string
+            defiTvl:
+              type: string
+        newsSignals:
+          type: object
+          properties:
+            sentiment:
+              type: string
+              enum: [positive, negative, neutral]
+            keyEvents:
+              type: array
+              items:
+                type: string
+        createdAt:
+          type: string
+
+    AnalysisRequest:
+      type: object
+      required: [asset]
+      properties:
+        asset:
+          type: string
+
+    Opportunity:
+      type: object
+      required: [id, asset, bullishScore, bearishScore, confidenceScore, recommendation, summary, analysisId, createdAt]
+      properties:
+        id:
+          type: integer
+        asset:
+          type: string
+        bullishScore:
+          type: number
+        bearishScore:
+          type: number
+        confidenceScore:
+          type: number
+        riskScore:
+          type: number
+        recommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        summary:
+          type: string
+        analysisId:
+          type: integer
+        createdAt:
+          type: string
+
+    # ── Behavior ─────────────────────────────────────────────────
+    BehaviorPattern:
+      type: object
+      required: [id, type, severity, description, occurrences, impactOnPnl, recommendation, detectedAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [fomo_trading, revenge_trading, overtrading, holding_losers, cutting_winners_early, ignoring_stop_loss, position_sizing_mistake]
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        description:
+          type: string
+        occurrences:
+          type: integer
+        impactOnPnl:
+          type: number
+        recommendation:
+          type: string
+        exampleTradeIds:
+          type: array
+          items:
+            type: integer
+        detectedAt:
+          type: string
+
+    BehaviorSummary:
+      type: object
+      required: [topPattern, totalIssues, estimatedPnlImpact, improvementScore, patterns]
+      properties:
+        topPattern:
+          type: string
+        totalIssues:
+          type: integer
+        estimatedPnlImpact:
+          type: number
+        improvementScore:
+          type: number
+        patterns:
+          type: array
+          items:
+            $ref: "#/components/schemas/BehaviorPattern"
+
+    # ── Coaching ─────────────────────────────────────────────────
+    CoachingReport:
+      type: object
+      required: [id, type, title, summary, keyInsights, topMistakes, improvements, recommendations, tradingScore, periodStart, periodEnd, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [daily, weekly, monthly]
+        title:
+          type: string
+        summary:
+          type: string
+        keyInsights:
+          type: array
+          items:
+            type: string
+        topMistakes:
+          type: array
+          items:
+            type: string
+        improvements:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        tradingScore:
+          type: number
+        winRate:
+          type: number
+        totalTrades:
+          type: integer
+        totalPnl:
+          type: number
+        periodStart:
+          type: string
+        periodEnd:
+          type: string
+        createdAt:
+          type: string
+
+    CoachingReportRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [daily, weekly, monthly]
+        periodStart:
+          type: string
+        periodEnd:
+          type: string
+
+    # ── Trade Replay ─────────────────────────────────────────────
+    TradeReplay:
+      type: object
+      required: [id, tradeId, asset, entryDate, entryPrice, exitPrice, direction, marketContext, newsEvents, sentimentConditions, whaleActivity, technicalIndicators, userReasoning, aiRecommendation, actualOutcome, lessonsLearned, pnl, pnlPercent, createdAt]
+      properties:
+        id:
+          type: integer
+        tradeId:
+          type: integer
+        journalEntryId:
+          type: ["integer", "null"]
+        asset:
+          type: string
+        entryDate:
+          type: string
+        entryPrice:
+          type: number
+        exitPrice:
+          type: number
+        direction:
+          type: string
+          enum: [long, short]
+        marketContext:
+          type: string
+        newsEvents:
+          type: array
+          items:
+            type: string
+        sentimentConditions:
+          type: string
+        whaleActivity:
+          type: string
+        technicalIndicators:
+          type: object
+          properties:
+            rsi:
+              type: number
+            macd:
+              type: string
+            trend:
+              type: string
+        userReasoning:
+          type: string
+        aiRecommendation:
+          type: string
+          enum: [buy, sell, wait, hold]
+        actualOutcome:
+          type: string
+        lessonsLearned:
+          type: string
+        pnl:
+          type: number
+        pnlPercent:
+          type: number
+        behaviorFlags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    ReplayRequest:
+      type: object
+      required: [tradeId]
+      properties:
+        tradeId:
+          type: integer
+
+    # ── Chat ─────────────────────────────────────────────────────
+    ChatSession:
+      type: object
+      required: [id, title, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ChatMessage:
+      type: object
+      required: [id, sessionId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    ChatMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    ChatResponse:
+      type: object
+      required: [userMessage, assistantMessage]
+      properties:
+        userMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        assistantMessage:
+          $ref: "#/components/schemas/ChatMessage"
+
+    # ── Risk ─────────────────────────────────────────────────────
+    RiskReport:
+      type: object
+      required: [id, riskScore, portfolioHealthScore, maxExposureWarnings, stopLossSuggestions, positionSizeSuggestions, concentrationRisks, summary, recommendations, createdAt]
+      properties:
+        id:
+          type: integer
+        riskScore:
+          type: number
+        portfolioHealthScore:
+          type: number
+        maxExposureWarnings:
+          type: array
+          items:
+            type: string
+        stopLossSuggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              asset:
+                type: string
+              suggestedStopLoss:
+                type: number
+              currentPrice:
+                type: number
+        positionSizeSuggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              asset:
+                type: string
+              currentSize:
+                type: number
+              suggestedSize:
+                type: number
+        concentrationRisks:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
