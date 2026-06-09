@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { validateCredentials } from "../lib/bitget";
+import { syncBitgetData } from "./bitget-account";
 
 const router = Router();
 
@@ -16,9 +17,14 @@ router.post("/auth/connect", async (req, res): Promise<void> => {
   }
 
   try {
-    const info = await validateCredentials({ apiKey, secretKey, passphrase });
-    req.session.bitget = { apiKey, secretKey, passphrase };
+    const creds = { apiKey, secretKey, passphrase };
+    const info = await validateCredentials(creds);
+    req.session.bitget = creds;
     req.session.uid = info.uid;
+
+    // Auto-sync trade history in background
+    syncBitgetData(creds).catch(() => { /* non-blocking */ });
+
     res.json({ connected: true, uid: info.uid });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid credentials";
