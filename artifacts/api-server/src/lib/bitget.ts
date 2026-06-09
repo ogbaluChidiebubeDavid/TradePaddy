@@ -50,9 +50,35 @@ async function bitgetRequest(
   return data.data;
 }
 
-export async function validateCredentials(creds: BitgetCredentials): Promise<{ uid: string; userId: string }> {
-  const data = (await bitgetRequest(creds, "GET", "/api/v2/user/info")) as { userId: string; uid: string };
-  return { uid: data.uid || data.userId, userId: data.userId || data.uid };
+export async function validateCredentials(creds: BitgetCredentials): Promise<{ uid: string }> {
+  const timestamp = Date.now().toString();
+  const requestPath = "/api/v2/spot/account/assets";
+  const prehash = timestamp + "GET" + requestPath;
+  const signature = sign(prehash, creds.secretKey);
+
+  const res = await fetch(BITGET_BASE + requestPath, {
+    headers: {
+      "ACCESS-KEY": creds.apiKey,
+      "ACCESS-SIGN": signature,
+      "ACCESS-TIMESTAMP": timestamp,
+      "ACCESS-PASSPHRASE": creds.passphrase,
+      "Content-Type": "application/json",
+      locale: "en-US",
+    },
+  });
+
+  const data = (await res.json()) as { code: string; msg: string; data: unknown };
+
+  const AUTH_ERROR_CODES = ["40037", "40101", "40102", "40103", "40200", "40203", "40302"];
+  if (AUTH_ERROR_CODES.includes(data.code)) {
+    throw new Error(`Invalid Bitget credentials: ${data.msg}`);
+  }
+  if (data.code !== "00000") {
+    throw new Error(`Bitget error: ${data.msg} (code: ${data.code})`);
+  }
+
+  const uid = creds.apiKey.replace(/^bg_/, "").slice(0, 16);
+  return { uid };
 }
 
 export async function getSpotAssets(creds: BitgetCredentials): Promise<unknown[]> {
