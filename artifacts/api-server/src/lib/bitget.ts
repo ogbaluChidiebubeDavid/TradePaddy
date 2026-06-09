@@ -12,6 +12,19 @@ function sign(message: string, secretKey: string): string {
   return crypto.createHmac("sha256", secretKey).update(message).digest("base64");
 }
 
+function buildHeaders(creds: BitgetCredentials, method: string, requestPath: string, bodyStr = "") {
+  const timestamp = Date.now().toString();
+  const prehash = timestamp + method.toUpperCase() + requestPath + bodyStr;
+  return {
+    "ACCESS-KEY": creds.apiKey,
+    "ACCESS-SIGN": sign(prehash, creds.secretKey),
+    "ACCESS-TIMESTAMP": timestamp,
+    "ACCESS-PASSPHRASE": creds.passphrase,
+    "Content-Type": "application/json",
+    locale: "en-US",
+  };
+}
+
 async function bitgetRequest(
   creds: BitgetCredentials,
   method: string,
@@ -19,53 +32,37 @@ async function bitgetRequest(
   params?: Record<string, string>,
   body?: unknown,
 ): Promise<unknown> {
-  const timestamp = Date.now().toString();
   let requestPath = path;
   if (params && Object.keys(params).length > 0) {
     requestPath += "?" + new URLSearchParams(params).toString();
   }
   const bodyStr = body ? JSON.stringify(body) : "";
-  const prehash = timestamp + method.toUpperCase() + requestPath + bodyStr;
-  const signature = sign(prehash, creds.secretKey);
+  const headers = buildHeaders(creds, method, requestPath, bodyStr);
 
   const res = await fetch(BITGET_BASE + requestPath, {
     method,
-    headers: {
-      "ACCESS-KEY": creds.apiKey,
-      "ACCESS-SIGN": signature,
-      "ACCESS-TIMESTAMP": timestamp,
-      "ACCESS-PASSPHRASE": creds.passphrase,
-      "Content-Type": "application/json",
-      locale: "en-US",
-    },
+    headers,
     body: bodyStr || undefined,
   });
 
   const data = (await res.json()) as { code: string; msg: string; data: unknown };
   if (data.code !== "00000") {
-    throw new Error(`Bitget API error: ${data.msg} (code: ${data.code})`);
+    throw new Error(`${data.msg} (code: ${data.code})`);
   }
   return data.data;
 }
 
-export async function validateCredentials(creds: BitgetCredentials): Promise<{ uid: string }> {
-  const timestamp = Date.now().toString();
+// ─── Credential Validation ─────────────────────────────────────────────────
+
+export async function validateCredentials(creds: BitgetCredentials): Promise<{
+  uid: string;
+  spotAssets: SpotAsset[];
+}> {
   const requestPath = "/api/v2/spot/account/assets";
-  const prehash = timestamp + "GET" + requestPath;
-  const signature = sign(prehash, creds.secretKey);
-
-  const res = await fetch(BITGET_BASE + requestPath, {
-    headers: {
-      "ACCESS-KEY": creds.apiKey,
-      "ACCESS-SIGN": signature,
-      "ACCESS-TIMESTAMP": timestamp,
-      "ACCESS-PASSPHRASE": creds.passphrase,
-      "Content-Type": "application/json",
-      locale: "en-US",
-    },
-  });
-
+  const headers = buildHeaders(creds, "GET", requestPath);
+  const res = await fetch(BITGET_BASE + requestPath, { headers });
   const data = (await res.json()) as { code: string; msg: string; data: unknown };
+
   const AUTH_ERROR_CODES = ["40037", "40101", "40102", "40103", "40200", "40203", "40302", "40006"];
   if (AUTH_ERROR_CODES.includes(data.code)) {
     throw new Error(`Invalid Bitget credentials: ${data.msg}`);
@@ -73,9 +70,46 @@ export async function validateCredentials(creds: BitgetCredentials): Promise<{ u
   if (data.code !== "00000") {
     throw new Error(`Bitget error: ${data.msg} (code: ${data.code})`);
   }
-  const uid = creds.apiKey.replace(/^bg_/, "").slice(0, 16);
-  return { uid };
+
+  const spotAssets = (data.data as SpotAsset[]) || [];
+  const uid = creds.apiKey.slice(-8); // last 8 chars of API key as safe identifier
+  return { uid, spotAssets };
 }
+
+// ─── User Info ────────────────────────────────────────────────────────────
+
+export interface BitgetUserInfo {
+  userId: string;
+  nick: string;
+}
+
+export async function getUserInfo(creds: BitgetCredentials): Promise<BitgetUserInfo> {
+  // Try v2 user info
+  try {
+    const data = await bitgetRequest(creds, "GET", "/api/v2/user/info") as Record<string, unknown>;
+    if (data && (data.nick || data.userId)) {
+      return {
+        userId: String(data.userId ?? ""),
+        nick: String(data.nick ?? ""),
+      };
+    }
+  } catch { /* try next */ }
+
+  // Try v1 user info fallback
+  try {
+    const data = await bitgetRequest(creds, "GET", "/api/spot/v1/account/getInfo") as Record<string, unknown>;
+    if (data) {
+      return {
+        userId: String(data.user_id ?? data.userId ?? ""),
+        nick: String(data.nick ?? data.nickName ?? ""),
+      };
+    }
+  } catch { /* fallback */ }
+
+  return { userId: "", nick: "" };
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────
 
 export interface SpotAsset {
   coinName: string;
@@ -91,12 +125,12 @@ export interface FuturesAccount {
   frozen: string;
   unrealizedPL: string;
   equity: string;
-  crossedRiskRate?: string;
+  usdtEquity?: string;
 }
 
 export interface FuturesPosition {
   symbol: string;
-  holdSide: string; // long | short
+  holdSide: string;
   openPriceAvg: string;
   markPrice: string;
   marginSize: string;
@@ -113,7 +147,7 @@ export interface SpotFill {
   tradeId: string;
   orderId: string;
   symbol: string;
-  side: string; // buy | sell
+  side: string;
   fillPrice: string;
   size: string;
   fillAmount: string;
@@ -127,7 +161,7 @@ export interface SpotFill {
 export interface FuturesFill {
   tradeId: string;
   symbol: string;
-  side: string; // open_long | close_long | open_short | close_short
+  side: string;
   price: string;
   baseVolume: string;
   profit: string;
@@ -138,33 +172,50 @@ export interface FuturesFill {
   cTime: string;
 }
 
+// ─── Account Endpoints ────────────────────────────────────────────────────
+
 export async function getSpotAssets(creds: BitgetCredentials): Promise<SpotAsset[]> {
-  const data = await bitgetRequest(creds, "GET", "/api/v2/spot/account/assets");
-  const assets = (data as SpotAsset[]) || [];
-  return assets.filter(a => parseFloat(a.available || "0") > 0 || parseFloat(a.frozen || "0") > 0 || parseFloat(a.usdtValue || "0") > 0);
+  try {
+    const data = await bitgetRequest(creds, "GET", "/api/v2/spot/account/assets");
+    const assets = (data as SpotAsset[]) || [];
+    // Show all assets that have ANY balance — don't filter on usdtValue (may be absent)
+    return assets.filter(a => parseFloat(a.available || "0") > 0 || parseFloat(a.frozen || "0") > 0);
+  } catch (err) {
+    throw new Error(`Spot assets: ${err instanceof Error ? err.message : "failed"}`);
+  }
 }
 
+const FUTURES_PRODUCT_TYPES = ["USDT-FUTURES", "COIN-FUTURES", "USDT-FUTURES-ISOLATED"];
+
 export async function getFuturesAccounts(creds: BitgetCredentials): Promise<FuturesAccount[]> {
-  try {
-    const data = await bitgetRequest(creds, "GET", "/api/v2/mix/account/accounts", {
-      productType: "USDT-FUTURES",
-    });
-    return (data as FuturesAccount[]) || [];
-  } catch {
-    return [];
+  const results: FuturesAccount[] = [];
+  for (const productType of FUTURES_PRODUCT_TYPES) {
+    try {
+      const data = await bitgetRequest(creds, "GET", "/api/v2/mix/account/accounts", { productType });
+      const accounts = (data as FuturesAccount[]) || [];
+      for (const acc of accounts) {
+        if (parseFloat(acc.equity || "0") > 0 || parseFloat(acc.available || "0") > 0) {
+          results.push(acc);
+        }
+      }
+    } catch { /* skip unsupported product type */ }
   }
+  return results;
 }
 
 export async function getFuturesPositions(creds: BitgetCredentials): Promise<FuturesPosition[]> {
-  try {
-    const data = await bitgetRequest(creds, "GET", "/api/v2/mix/position/allPosition", {
-      productType: "USDT-FUTURES",
-      marginCoin: "USDT",
-    });
-    return (data as FuturesPosition[]) || [];
-  } catch {
-    return [];
+  const results: FuturesPosition[] = [];
+  for (const productType of ["USDT-FUTURES", "COIN-FUTURES"]) {
+    try {
+      const data = await bitgetRequest(creds, "GET", "/api/v2/mix/position/allPosition", {
+        productType,
+        marginCoin: productType === "USDT-FUTURES" ? "USDT" : "BTC",
+      });
+      const positions = (data as FuturesPosition[]) || [];
+      results.push(...positions.filter(p => parseFloat(p.total || "0") > 0));
+    } catch { /* skip */ }
   }
+  return results;
 }
 
 export async function getSpotFills(creds: BitgetCredentials, limit = "100"): Promise<SpotFill[]> {
@@ -179,49 +230,16 @@ export async function getSpotFills(creds: BitgetCredentials, limit = "100"): Pro
 }
 
 export async function getFuturesFills(creds: BitgetCredentials, limit = "100"): Promise<FuturesFill[]> {
-  try {
-    const data = await bitgetRequest(creds, "GET", "/api/v2/mix/order/fills", {
-      productType: "USDT-FUTURES",
-      limit,
-    });
-    const result = data as { fillList?: FuturesFill[] } | FuturesFill[];
-    if (Array.isArray(result)) return result;
-    return (result as { fillList?: FuturesFill[] }).fillList || [];
-  } catch {
-    return [];
+  const results: FuturesFill[] = [];
+  for (const productType of ["USDT-FUTURES", "COIN-FUTURES"]) {
+    try {
+      const data = await bitgetRequest(creds, "GET", "/api/v2/mix/order/fills", { productType, limit });
+      const result = data as { fillList?: FuturesFill[] } | FuturesFill[];
+      const fills = Array.isArray(result) ? result : ((result as { fillList?: FuturesFill[] }).fillList || []);
+      results.push(...fills);
+    } catch { /* skip */ }
   }
-}
-
-export async function getSpotOrders(creds: BitgetCredentials): Promise<unknown[]> {
-  try {
-    const data = await bitgetRequest(creds, "GET", "/api/v2/spot/trade/history", { limit: "100" });
-    const result = data as { orderList?: unknown[] } | unknown[];
-    if (Array.isArray(result)) return result;
-    return (result as { orderList?: unknown[] }).orderList || [];
-  } catch {
-    return [];
-  }
-}
-
-export interface BitgetUserInfo {
-  userId: string;
-  nick: string;
-  userType: string;
-}
-
-export async function getUserInfo(creds: BitgetCredentials): Promise<BitgetUserInfo> {
-  try {
-    const data = await bitgetRequest(creds, "GET", "/api/v2/user/info");
-    const info = data as Partial<BitgetUserInfo>;
-    return {
-      userId: info.userId ?? "",
-      nick: info.nick ?? "",
-      userType: info.userType ?? "personal",
-    };
-  } catch {
-    // Fallback — some API key permission sets don't expose user info
-    return { userId: "", nick: "", userType: "personal" };
-  }
+  return results;
 }
 
 export async function placeOrder(

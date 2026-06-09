@@ -1,22 +1,21 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { 
-  Activity, 
-  BarChart2, 
-  Briefcase, 
-  LineChart, 
-  Target, 
-  BrainCircuit, 
-  GraduationCap, 
-  PlayCircle, 
-  MessageSquare, 
+import {
+  Activity,
+  BarChart2,
+  Briefcase,
+  LineChart,
+  Target,
+  BrainCircuit,
+  GraduationCap,
+  PlayCircle,
+  MessageSquare,
   AlertTriangle,
   LogOut,
   Wifi,
   Menu,
   X,
   RefreshCw,
-  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -39,9 +38,31 @@ const NAV_ITEMS = [
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+function AccountBadge() {
+  const { username } = useAuth();
+
+  // Show Bitget username/nick if available, otherwise show generic label
+  const displayName = username ?? "Bitget Account";
+
+  return (
+    <div className="flex items-center gap-2 px-1 py-1">
+      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-primary font-bold text-sm">
+        {displayName.charAt(0).toUpperCase()}
+      </div>
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-center gap-1.5">
+          <Wifi className="w-3 h-3 text-green-500 shrink-0" />
+          <span className="text-xs font-semibold text-foreground truncate">{displayName}</span>
+        </div>
+        <span className="text-[10px] text-green-500 font-medium">Connected · Bitget</span>
+      </div>
+    </div>
+  );
+}
+
 function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
   const [location] = useLocation();
-  const { uid, username, userId, logout } = useAuth();
+  const { logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,7 +73,7 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
         credentials: "include",
       });
       if (!res.ok) {
-        const err = await res.json() as { error: string };
+        const err = (await res.json()) as { error: string };
         throw new Error(err.error || "Sync failed");
       }
       return res.json() as Promise<{ totalImported: number; spotFills: number; futuresFills: number }>;
@@ -60,8 +81,8 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
     onSuccess: (data) => {
       queryClient.invalidateQueries();
       toast({
-        title: `Synced ${data.totalImported} trades from Bitget`,
-        description: `${data.spotFills} spot fills + ${data.futuresFills} futures fills imported`,
+        title: `Synced ${data.totalImported} trades`,
+        description: `${data.spotFills} spot + ${data.futuresFills} futures fills imported from Bitget`,
       });
     },
     onError: (err) => {
@@ -74,29 +95,27 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
     toast({ title: "Disconnected from Bitget" });
   };
 
-  // Display priority: nick name > userId > fallback label
-  const displayName = username || (userId ? `UID ${userId}` : "Bitget Account");
-  const subLabel = userId && username ? `UID ${userId}` : (uid ? `Key …${uid.slice(-6)}` : null);
-
   return (
     <>
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <span className="font-mono text-xl font-bold tracking-tight text-primary">TradePaddy<span className="text-muted-foreground opacity-50">.ai</span></span>
+        <span className="font-mono text-xl font-bold tracking-tight text-primary">
+          TradePaddy<span className="text-muted-foreground opacity-50">.ai</span>
+        </span>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
           const isActive = location === item.href;
           return (
-            <Link 
-              key={item.href} 
+            <Link
+              key={item.href}
               href={item.href}
               onClick={onNavClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-colors",
-                isActive 
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
               <item.icon className="w-4 h-4 shrink-0" />
@@ -107,21 +126,7 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
       </nav>
 
       <div className="p-4 border-t border-border shrink-0 space-y-2">
-        {/* Account info */}
-        <div className="flex items-center gap-2.5 px-1 py-1 rounded-sm">
-          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-            <User className="w-3.5 h-3.5 text-primary" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Wifi className="w-3 h-3 text-green-500 shrink-0" />
-              <span className="text-xs font-semibold text-green-500 truncate">{displayName}</span>
-            </div>
-            {subLabel && (
-              <span className="text-[10px] text-muted-foreground font-mono truncate">{subLabel}</span>
-            )}
-          </div>
-        </div>
+        <AccountBadge />
 
         <button
           onClick={() => syncMutation.mutate()}
@@ -146,12 +151,10 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-foreground selection:bg-primary/30">
-
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 border-r border-border bg-card flex-col h-full shrink-0">
         <SidebarContent onNavClick={() => {}} />
@@ -159,17 +162,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 md:hidden"
-          onClick={closeSidebar}
-        />
+        <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={closeSidebar} />
       )}
 
-      {/* Mobile sidebar (slide-in) */}
+      {/* Mobile slide-in sidebar */}
       <aside
         className={cn(
           "fixed top-0 left-0 h-full w-72 z-50 bg-card border-r border-border flex flex-col transition-transform duration-300 md:hidden",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="absolute top-4 right-4">
@@ -201,9 +201,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex-1 overflow-y-auto z-10 relative">
-          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-            {children}
-          </div>
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>
         </div>
       </main>
     </div>

@@ -122,16 +122,12 @@ export async function syncBitgetData(creds: BitgetCredentials) {
   for (const fill of spotFills) {
     try { rows.push(spotFillToTrade(fill)); } catch { /* skip */ }
   }
-
   for (const fill of futuresFills) {
     try { rows.push(futuresFillToTrade(fill)); } catch { /* skip */ }
   }
 
-  // Add open positions only if not already represented in fills
   const openSymbols = new Set(
-    futuresFills
-      .filter(f => (f.side || f.tradeSide || "").startsWith("open"))
-      .map(f => f.symbol)
+    futuresFills.filter(f => (f.side || f.tradeSide || "").startsWith("open")).map(f => f.symbol)
   );
   for (const pos of openPositions) {
     if (!openSymbols.has(pos.symbol)) {
@@ -139,11 +135,8 @@ export async function syncBitgetData(creds: BitgetCredentials) {
     }
   }
 
-  // Clear demo data and replace with real Bitget data
   await db.delete(tradesTable);
-
   if (rows.length > 0) {
-    // Insert in chunks of 50
     for (let i = 0; i < rows.length; i += 50) {
       await db.insert(tradesTable).values(rows.slice(i, i + 50));
     }
@@ -160,66 +153,85 @@ export async function syncBitgetData(creds: BitgetCredentials) {
 
 router.post("/bitget/sync", async (req, res): Promise<void> => {
   const creds = getCreds(req);
-  if (!creds) {
-    res.status(401).json({ error: "Not connected to Bitget. Please connect your account first." });
-    return;
-  }
+  if (!creds) { res.status(401).json({ error: "Not connected to Bitget" }); return; }
   try {
     const result = await syncBitgetData(creds);
     res.json(result);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Sync failed";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: err instanceof Error ? err.message : "Sync failed" });
   }
 });
 
 router.get("/bitget/portfolio", async (req, res): Promise<void> => {
   const creds = getCreds(req);
-  if (!creds) {
-    res.status(401).json({ error: "Not connected to Bitget" });
-    return;
-  }
-  try {
-    const [spotAssets, futuresAccounts, positions] = await Promise.all([
-      getSpotAssets(creds),
-      getFuturesAccounts(creds),
-      getFuturesPositions(creds),
-    ]);
+  if (!creds) { res.status(401).json({ error: "Not connected to Bitget" }); return; }
 
-    const spotTotal = spotAssets.reduce((sum, a) => sum + parseFloat(a.usdtValue || "0"), 0);
-    const futuresEquity = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.equity || "0"), 0);
-    const futuresUnrealized = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.unrealizedPL || "0"), 0);
+  const errors: string[] = [];
 
-    const livePositions = positions.map(pos => ({
-      asset: symbolToAsset(pos.symbol),
-      symbol: pos.symbol,
-      direction: pos.holdSide,
-      entryPrice: parseFloat(pos.openPriceAvg || "0"),
-      markPrice: parseFloat(pos.markPrice || "0"),
-      quantity: parseFloat(pos.total || "0"),
-      unrealizedPnl: parseFloat(pos.unrealizedPL || "0"),
-      leverage: parseInt(pos.leverage || "1"),
-      liquidationPrice: parseFloat(pos.liquidationPrice || "0"),
-      marginMode: pos.marginMode,
-    }));
+  // Fetch all account data — capture errors per-section so a futures failure doesn't kill spot
+  let spotAssets: Awaited<ReturnType<typeof getSpotAssets>> = [];
+  let futuresAccounts: Awaited<ReturnType<typeof getFuturesAccounts>> = [];
+  let positions: Awaited<ReturnType<typeof getFuturesPositions>> = [];
 
-    res.json({
-      spotAssets: spotAssets.map(a => ({
-        coin: a.coinName,
-        available: parseFloat(a.available || "0"),
-        frozen: parseFloat(a.frozen || "0"),
-        usdtValue: parseFloat(a.usdtValue || "0"),
-      })),
-      spotTotal: Math.round(spotTotal * 100) / 100,
-      futuresEquity: Math.round(futuresEquity * 100) / 100,
-      futuresUnrealized: Math.round(futuresUnrealized * 100) / 100,
-      totalValue: Math.round((spotTotal + futuresEquity) * 100) / 100,
-      livePositions,
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to fetch portfolio";
-    res.status(500).json({ error: msg });
-  }
+  await Promise.all([
+    getSpotAssets(creds).then(d => { spotAssets = d; }).catch(e => {
+      errors.push(`Spot: ${e instanceof Error ? e.message : "failed"}`);
+    }),
+    getFuturesAccounts(creds).then(d => { futuresAccounts = d; }).catch(e => {
+      errors.push(`Futures: ${e instanceof Error ? e.message : "failed"}`);
+    }),
+    getFuturesPositions(creds).then(d => { positions = d; }).catch(e => {
+      errors.push(`Positions: ${e instanceof Error ? e.message : "failed"}`);
+    }),
+  ]);
+
+  const spotTotal = spotAssets.reduce((sum, a) => sum + parseFloat(a.usdtValue || "0"), 0);
+  const futuresEquity = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.equity || a.usdtEquity || "0"), 0);
+  const futuresUnrealized = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.unrealizedPL || "0"), 0);
+
+  const livePositions = positions.map(pos => ({
+    asset: symbolToAsset(pos.symbol),
+    symbol: pos.symbol,
+    direction: pos.holdSide,
+    entryPrice: parseFloat(pos.openPriceAvg || "0"),
+    markPrice: parseFloat(pos.markPrice || "0"),
+    quantity: parseFloat(pos.total || "0"),
+    unrealizedPnl: parseFloat(pos.unrealizedPL || "0"),
+    leverage: parseInt(pos.leverage || "1"),
+    liquidationPrice: parseFloat(pos.liquidationPrice || "0"),
+    marginMode: pos.marginMode,
+  }));
+
+  res.json({
+    spotAssets: spotAssets.map(a => ({
+      coin: a.coinName,
+      available: parseFloat(a.available || "0"),
+      frozen: parseFloat(a.frozen || "0"),
+      usdtValue: parseFloat(a.usdtValue || "0"),
+    })),
+    spotTotal: Math.round(spotTotal * 100) / 100,
+    futuresEquity: Math.round(futuresEquity * 100) / 100,
+    futuresUnrealized: Math.round(futuresUnrealized * 100) / 100,
+    totalValue: Math.round((spotTotal + futuresEquity) * 100) / 100,
+    livePositions,
+    errors: errors.length > 0 ? errors : undefined,
+  });
+});
+
+// Raw debug endpoint — shows exactly what Bitget returns
+router.get("/bitget/debug", async (req, res): Promise<void> => {
+  const creds = getCreds(req);
+  if (!creds) { res.status(401).json({ error: "Not connected" }); return; }
+
+  const results: Record<string, unknown> = {};
+
+  await Promise.allSettled([
+    getSpotAssets(creds).then(d => { results.spotAssets = d; }).catch(e => { results.spotAssetsError = String(e); }),
+    getFuturesAccounts(creds).then(d => { results.futuresAccounts = d; }).catch(e => { results.futuresAccountsError = String(e); }),
+    getFuturesPositions(creds).then(d => { results.positions = d; }).catch(e => { results.positionsError = String(e); }),
+  ]);
+
+  res.json(results);
 });
 
 export default router;

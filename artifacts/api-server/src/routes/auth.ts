@@ -19,15 +19,18 @@ router.post("/auth/connect", async (req, res): Promise<void> => {
   try {
     const creds = { apiKey, secretKey, passphrase };
 
-    // Validate credentials and fetch user info in parallel
-    const [info, userInfo] = await Promise.all([
+    // Validate creds (also returns spot assets) + fetch user info in parallel
+    const [validation, userInfo] = await Promise.all([
       validateCredentials(creds),
       getUserInfo(creds),
     ]);
 
     req.session.bitget = creds;
-    req.session.uid = info.uid;
-    req.session.username = userInfo.nick || userInfo.userId || null;
+    req.session.uid = validation.uid;
+
+    // username: prefer real Bitget nick, then userId, then null
+    const username = userInfo.nick || (userInfo.userId ? `UID ${userInfo.userId}` : null);
+    req.session.username = username;
     req.session.userId = userInfo.userId || null;
 
     // Auto-sync trade history in background (non-blocking)
@@ -35,9 +38,9 @@ router.post("/auth/connect", async (req, res): Promise<void> => {
 
     res.json({
       connected: true,
-      uid: info.uid,
-      username: req.session.username,
-      userId: req.session.userId,
+      uid: validation.uid,
+      username,
+      userId: userInfo.userId || null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid credentials";

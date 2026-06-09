@@ -19,11 +19,8 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   for (const t of closedTrades) {
     assetPnl.set(t.asset, (assetPnl.get(t.asset) ?? 0) + parseFloat(t.pnl ?? "0"));
   }
-
-  let bestAsset = "N/A";
-  let worstAsset = "N/A";
-  let bestPnl = -Infinity;
-  let worstPnl = Infinity;
+  let bestAsset = "N/A", worstAsset = "N/A";
+  let bestPnl = -Infinity, worstPnl = Infinity;
   for (const [asset, pnl] of assetPnl.entries()) {
     if (pnl > bestPnl) { bestPnl = pnl; bestAsset = asset; }
     if (pnl < worstPnl) { worstPnl = pnl; worstAsset = asset; }
@@ -37,32 +34,31 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const weeklyPnl = closedTrades
     .filter((t) => t.closedAt && new Date(t.closedAt) > weekAgo)
     .reduce((sum, t) => sum + parseFloat(t.pnl ?? "0"), 0);
-
   const monthlyPnl = closedTrades
     .filter((t) => t.closedAt && new Date(t.closedAt) > monthAgo)
     .reduce((sum, t) => sum + parseFloat(t.pnl ?? "0"), 0);
 
-  // Fetch REAL portfolio value from Bitget if connected
+  // Fetch REAL portfolio value from live Bitget account
   let portfolioValue = 0;
   let spotBalance = 0;
   let futuresEquity = 0;
 
   const creds = req.session.bitget as BitgetCredentials | undefined;
   if (creds) {
-    try {
-      const [spotAssets, futuresAccounts] = await Promise.all([
-        getSpotAssets(creds),
-        getFuturesAccounts(creds),
-      ]);
-      spotBalance = spotAssets.reduce((sum, a) => sum + parseFloat(a.usdtValue || "0"), 0);
-      futuresEquity = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.equity || "0"), 0);
-      portfolioValue = spotBalance + futuresEquity;
-    } catch {
-      portfolioValue = 0;
+    const results = await Promise.allSettled([
+      getSpotAssets(creds),
+      getFuturesAccounts(creds),
+    ]);
+
+    if (results[0].status === "fulfilled") {
+      spotBalance = results[0].value.reduce((sum, a) => sum + parseFloat(a.usdtValue || "0"), 0);
     }
+    if (results[1].status === "fulfilled") {
+      futuresEquity = results[1].value.reduce((sum, a) => sum + parseFloat(a.equity || a.usdtEquity || "0"), 0);
+    }
+    portfolioValue = spotBalance + futuresEquity;
   }
 
-  // Risk score
   const noStopCount = openTrades.filter((t) => !t.stopLoss).length;
   const riskScore = Math.min(90, 20 + noStopCount * 5 + (openTrades.length > 5 ? 20 : 0));
   const portfolioHealthScore = Math.max(30, 85 - riskScore * 0.4);
