@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   RefreshCw,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -40,7 +41,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
   const [location] = useLocation();
-  const { uid, logout } = useAuth();
+  const { uid, username, userId, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -73,13 +74,16 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
     toast({ title: "Disconnected from Bitget" });
   };
 
-  const shortUid = uid ? uid.slice(0, 10) + "..." : "Connected";
+  // Display priority: nick name > userId > fallback label
+  const displayName = username || (userId ? `UID ${userId}` : "Bitget Account");
+  const subLabel = userId && username ? `UID ${userId}` : (uid ? `Key …${uid.slice(-6)}` : null);
 
   return (
     <>
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
         <span className="font-mono text-xl font-bold tracking-tight text-primary">TradePaddy<span className="text-muted-foreground opacity-50">.ai</span></span>
       </div>
+
       <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
           const isActive = location === item.href;
@@ -101,14 +105,24 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
           );
         })}
       </nav>
+
       <div className="p-4 border-t border-border shrink-0 space-y-2">
-        <div className="flex items-center gap-2 px-1 py-1">
-          <Wifi className="w-3.5 h-3.5 text-green-500 shrink-0" />
+        {/* Account info */}
+        <div className="flex items-center gap-2.5 px-1 py-1 rounded-sm">
+          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <User className="w-3.5 h-3.5 text-primary" />
+          </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-medium text-green-500">Bitget Connected</span>
-            <span className="text-xs text-muted-foreground truncate font-mono">{shortUid}</span>
+            <div className="flex items-center gap-1.5">
+              <Wifi className="w-3 h-3 text-green-500 shrink-0" />
+              <span className="text-xs font-semibold text-green-500 truncate">{displayName}</span>
+            </div>
+            {subLabel && (
+              <span className="text-[10px] text-muted-foreground font-mono truncate">{subLabel}</span>
+            )}
           </div>
         </div>
+
         <button
           onClick={() => syncMutation.mutate()}
           disabled={syncMutation.isPending}
@@ -117,6 +131,7 @@ function SidebarContent({ onNavClick }: { onNavClick: () => void }) {
           <RefreshCw className={cn("w-3.5 h-3.5", syncMutation.isPending && "animate-spin")} />
           {syncMutation.isPending ? "Syncing..." : "Sync Bitget data"}
         </button>
+
         <button
           onClick={handleDisconnect}
           className="flex items-center gap-2 w-full px-3 py-1.5 rounded-sm text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"

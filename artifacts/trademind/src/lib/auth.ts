@@ -3,6 +3,8 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export interface AuthState {
   connected: boolean;
   uid: string | null;
+  username: string | null;
+  userId: string | null;
 }
 
 export async function fetchMe(): Promise<AuthState> {
@@ -14,7 +16,7 @@ export async function connectBitget(credentials: {
   apiKey: string;
   secretKey: string;
   passphrase: string;
-}): Promise<{ connected: boolean; uid: string }> {
+}): Promise<{ connected: boolean; uid: string; username: string | null }> {
   const res = await fetch(`${BASE}/api/auth/connect`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -25,7 +27,7 @@ export async function connectBitget(credentials: {
     const err = (await res.json()) as { error: string };
     throw new Error(err.error || "Connection failed");
   }
-  return res.json() as Promise<{ connected: boolean; uid: string }>;
+  return res.json() as Promise<{ connected: boolean; uid: string; username: string | null }>;
 }
 
 export async function disconnectBitget(): Promise<void> {

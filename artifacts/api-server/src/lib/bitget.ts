@@ -203,6 +203,27 @@ export async function getSpotOrders(creds: BitgetCredentials): Promise<unknown[]
   }
 }
 
+export interface BitgetUserInfo {
+  userId: string;
+  nick: string;
+  userType: string;
+}
+
+export async function getUserInfo(creds: BitgetCredentials): Promise<BitgetUserInfo> {
+  try {
+    const data = await bitgetRequest(creds, "GET", "/api/v2/user/info");
+    const info = data as Partial<BitgetUserInfo>;
+    return {
+      userId: info.userId ?? "",
+      nick: info.nick ?? "",
+      userType: info.userType ?? "personal",
+    };
+  } catch {
+    // Fallback — some API key permission sets don't expose user info
+    return { userId: "", nick: "", userType: "personal" };
+  }
+}
+
 export async function placeOrder(
   creds: BitgetCredentials,
   params: {

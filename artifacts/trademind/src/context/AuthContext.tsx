@@ -10,13 +10,15 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue>({
   connected: false,
   uid: null,
+  username: null,
+  userId: null,
   loading: true,
   refresh: async () => {},
   logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ connected: false, uid: null });
+  const [state, setState] = useState<AuthState>({ connected: false, uid: null, username: null, userId: null });
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -24,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await fetchMe();
       setState(me);
     } catch {
-      setState({ connected: false, uid: null });
+      setState({ connected: false, uid: null, username: null, userId: null });
     } finally {
       setLoading(false);
     }
@@ -32,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await disconnectBitget();
-    setState({ connected: false, uid: null });
+    setState({ connected: false, uid: null, username: null, userId: null });
   }, []);
 
   useEffect(() => {
