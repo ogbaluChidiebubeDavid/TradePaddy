@@ -1,8 +1,15 @@
 import { Router } from "express";
 import { desc } from "drizzle-orm";
 import { db, behaviorPatternsTable } from "@workspace/db";
+import { syncBehaviorPatterns } from "../lib/behaviorDetect";
 
 const router = Router();
+
+router.post("/behavior/sync", async (_req, res): Promise<void> => {
+  await syncBehaviorPatterns();
+  const patterns = await db.select().from(behaviorPatternsTable).orderBy(desc(behaviorPatternsTable.detectedAt));
+  res.json(patterns.map(formatPattern));
+});
 
 router.get("/behavior/patterns", async (_req, res): Promise<void> => {
   const patterns = await db.select().from(behaviorPatternsTable).orderBy(desc(behaviorPatternsTable.detectedAt));

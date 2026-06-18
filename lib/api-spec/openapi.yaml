@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: TradeMind AI - AI Trading Operating System API
+  description: TradePaddy AI - AI Trading Operating System API
 servers:
   - url: /api
     description: Base API path
@@ -75,6 +75,65 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityItem"
+
+  # ── Market Candles ─────────────────────────────────────────────
+  /market/candles:
+    get:
+      operationId: getMarketCandles
+      tags: [trades]
+      summary: Get real market candle data for charting
+      parameters:
+        - in: query
+          name: asset
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: granularity
+          schema:
+            type: string
+            default: "1H"
+          required: false
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 200
+          required: false
+        - in: query
+          name: startTime
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: endTime
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: List of candles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candle"
+
+  /market/prices:
+    get:
+      operationId: getMarketPrices
+      tags: [trades]
+      summary: Get current asset prices
+      responses:
+        "200":
+          description: Current prices map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: number
 
   # ── Trades (Paper Trading) ─────────────────────────────────────
   /trades:
@@ -164,6 +223,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Trade"
+
+  /trades/public/{id}:
+    get:
+      operationId: getPublicTrade
+      tags: [trades]
+      summary: Get details of a public trade for sharing links
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trade details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+        "404":
+          description: Not found
+
+  /trades/public/{id}/replay:
+    get:
+      operationId: getPublicTradeReplay
+      tags: [trades]
+      summary: Get trade replay details publicly
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Replay details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeReplay"
+        "404":
+          description: Not found
+
 
   /trades/stats/summary:
     get:
@@ -676,7 +778,7 @@ components:
     # ── Trades ───────────────────────────────────────────────────
     Trade:
       type: object
-      required: [id, asset, direction, entryPrice, quantity, status, entryReason, marketConditions, aiRecommendation, userAction, createdAt]
+      required: [id, asset, direction, entryPrice, quantity, status, entryReason, marketConditions, aiRecommendation, userAction, createdAt, isReal, orderType]
       properties:
         id:
           type: integer
@@ -718,6 +820,13 @@ components:
           type: string
         closedAt:
           type: ["string", "null"]
+        isReal:
+          type: boolean
+          default: false
+        orderType:
+          type: string
+          enum: [market, limit]
+          default: market
 
     TradeInput:
       type: object
@@ -746,6 +855,13 @@ components:
           type: ["number", "null"]
         takeProfit:
           type: ["number", "null"]
+        isReal:
+          type: boolean
+          default: false
+        orderType:
+          type: string
+          enum: [market, limit]
+          default: market
 
     TradeUpdate:
       type: object
@@ -911,7 +1027,7 @@ components:
     # ── Market Analysis ──────────────────────────────────────────
     MarketAnalysis:
       type: object
-      required: [id, asset, bullishScore, bearishScore, confidenceScore, riskScore, recommendation, summary, evidence, riskAnalysis, macroSignals, sentimentSignals, technicalSignals, onchainSignals, newsSignals, createdAt]
+      required: [id, asset, bullishScore, bearishScore, confidenceScore, riskScore, recommendation, summary, evidence, riskAnalysis, macroSignals, sentimentSignals, technicalSignals, onchainSignals, newsSignals, opportunities, createdAt]
       properties:
         id:
           type: integer
@@ -993,9 +1109,12 @@ components:
               type: array
               items:
                 type: string
+        opportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Opportunity"
         createdAt:
           type: string
-
     AnalysisRequest:
       type: object
       required: [asset]
@@ -1005,28 +1124,19 @@ components:
 
     Opportunity:
       type: object
-      required: [id, asset, bullishScore, bearishScore, confidenceScore, recommendation, summary, analysisId, createdAt]
+      required: [tokenPair, type, entryRationale, riskLevel, confidence, horizon]
       properties:
-        id:
-          type: integer
-        asset:
+        tokenPair:
           type: string
-        bullishScore:
-          type: number
-        bearishScore:
-          type: number
-        confidenceScore:
-          type: number
-        riskScore:
-          type: number
-        recommendation:
+        type:
           type: string
-          enum: [buy, sell, wait, hold]
-        summary:
+        entryRationale:
           type: string
-        analysisId:
-          type: integer
-        createdAt:
+        riskLevel:
+          type: string
+        confidence:
+          type: number
+        horizon:
           type: string
 
     # ── Behavior ─────────────────────────────────────────────────
@@ -1296,3 +1406,20 @@ components:
             type: string
         createdAt:
           type: string
+
+    Candle:
+      type: object
+      required: [time, open, high, low, close, volume]
+      properties:
+        time:
+          type: integer
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number

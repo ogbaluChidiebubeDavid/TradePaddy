@@ -18,6 +18,14 @@ export const marketAnalysesTable = pgTable("market_analyses", {
   technicalSignals: json("technical_signals").$type<Record<string, unknown>>().default({}),
   onchainSignals: json("onchain_signals").$type<Record<string, unknown>>().default({}),
   newsSignals: json("news_signals").$type<Record<string, unknown>>().default({}),
+  opportunities: json("opportunities").$type<Array<{
+    tokenPair: string;
+    type: string;
+    entryRationale: string;
+    riskLevel: string;
+    confidence: number;
+    horizon: string;
+  }>>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

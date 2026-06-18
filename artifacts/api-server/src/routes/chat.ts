@@ -115,6 +115,7 @@ router.post("/chat/:sessionId/messages", async (req, res): Promise<void> => {
 
   // Fetch live Bitget portfolio if connected
   let livePortfolio = "";
+  let portfolioValue: number | undefined = undefined;
   const creds = req.session.bitget as BitgetCredentials | undefined;
   if (creds) {
     try {
@@ -125,6 +126,7 @@ router.post("/chat/:sessionId/messages", async (req, res): Promise<void> => {
       ]);
       const spotTotal = spotAssets.reduce((s, a) => s + parseFloat(a.usdtValue || "0"), 0);
       const futuresEquity = futuresAccounts.reduce((s, a) => s + parseFloat(a.equity || "0"), 0);
+      portfolioValue = spotTotal + futuresEquity;
       const spotStr = spotAssets
         .filter(a => parseFloat(a.usdtValue || "0") > 1)
         .map(a => `${a.coinName}: ${parseFloat(a.available || "0").toFixed(4)} (~$${parseFloat(a.usdtValue || "0").toFixed(2)})`)
@@ -145,7 +147,7 @@ router.post("/chat/:sessionId/messages", async (req, res): Promise<void> => {
   ).join(", ");
 
   const enrichedContext = {
-    portfolioValue: null, // will be set from live data if available
+    portfolioValue, // will be set from live data if available
     winRate: Math.round(winRate * 10) / 10,
     totalPnl: Math.round(totalPnl * 100) / 100,
     totalTrades: closedTrades.length,

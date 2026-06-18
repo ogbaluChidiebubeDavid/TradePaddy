@@ -1,0 +1,23 @@
+{
+  "run_id": "pbrun-e874b6a139f6",
+  "draft_id": "58f78525-22d7-47b9-aa10-8d862b2a7a68",
+  "strategy_id": "99fda448-4f6e-42fc-b9f7-23839ac92365",
+  "publish_status": "published",
+  "metrics": {
+    "total_return_pct": -0.022,
+    "net_pnl": -0.022,
+    "starting_balance": 100000,
+    "max_drawdown_pct": 35.7,
+    "account_max_drawdown_pct": 0.0357,
+    "win_rate": 0.410256,
+    "total_trades": 78,
+    "sharpe_ratio": -4.3999,
+    "profit_factor": 0.6959,
+    "margin_budget": 100,
+    "window_start": "2026-05-01T00:00:00+00:00",
+    "window_end": "2026-06-01T00:00:00+00:00",
+    "equity_curve_point_count": 726
+  },
+  "main_risk": "Negative strategy-basis return with elevated drawdown in transitional ADX regimes; whipsaw risk when trend/range classification flips frequently.",
+  "completed_at": "2026-06-12T22:11:15.290Z"
+}

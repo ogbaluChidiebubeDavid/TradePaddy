@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, tradesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import type { InsertTrade } from "@workspace/db";
 import {
   getSpotAssets,
@@ -20,8 +21,13 @@ function getCreds(req: import("express").Request): BitgetCredentials | null {
 }
 
 function symbolToAsset(symbol: string): string {
-  return symbol.replace(/USDT$|PERP$|_UMCBL$|_DMCBL$/, "").replace(/_/g, "");
+  return symbol
+    .toUpperCase()
+    .replace(/_UMCBL$|_DMCBL$|PERP$/, "")
+    .replace(/USDT$|USD$|USDC$/, "")
+    .replace(/_/g, "");
 }
+
 
 function spotFillToTrade(fill: SpotFill): InsertTrade {
   const asset = symbolToAsset(fill.symbol);
@@ -49,6 +55,7 @@ function spotFillToTrade(fill: SpotFill): InsertTrade {
     takeProfit: null,
     createdAt: ts,
     closedAt: isBuy ? null : ts,
+    isReal: true,
   };
 }
 
@@ -80,6 +87,7 @@ function futuresFillToTrade(fill: FuturesFill): InsertTrade {
     takeProfit: null,
     createdAt: ts,
     closedAt: isOpen ? null : ts,
+    isReal: true,
   };
 }
 
@@ -107,6 +115,7 @@ function positionToTrade(pos: FuturesPosition): InsertTrade {
     takeProfit: null,
     createdAt: ts,
     closedAt: null,
+    isReal: true,
   };
 }
 
@@ -135,7 +144,7 @@ export async function syncBitgetData(creds: BitgetCredentials) {
     }
   }
 
-  await db.delete(tradesTable);
+  await db.delete(tradesTable).where(eq(tradesTable.isReal, true));
   if (rows.length > 0) {
     for (let i = 0; i < rows.length; i += 50) {
       await db.insert(tradesTable).values(rows.slice(i, i + 50));
@@ -189,18 +198,34 @@ router.get("/bitget/portfolio", async (req, res): Promise<void> => {
   const futuresEquity = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.equity || a.usdtEquity || "0"), 0);
   const futuresUnrealized = futuresAccounts.reduce((sum, a) => sum + parseFloat(a.unrealizedPL || "0"), 0);
 
-  const livePositions = positions.map(pos => ({
-    asset: symbolToAsset(pos.symbol),
-    symbol: pos.symbol,
-    direction: pos.holdSide,
-    entryPrice: parseFloat(pos.openPriceAvg || "0"),
-    markPrice: parseFloat(pos.markPrice || "0"),
-    quantity: parseFloat(pos.total || "0"),
-    unrealizedPnl: parseFloat(pos.unrealizedPL || "0"),
-    leverage: parseInt(pos.leverage || "1"),
-    liquidationPrice: parseFloat(pos.liquidationPrice || "0"),
-    marginMode: pos.marginMode,
-  }));
+  const openTrades = await db.select().from(tradesTable).where(
+    and(
+      eq(tradesTable.status, "open"),
+      eq(tradesTable.isReal, true)
+    )
+  );
+
+  const livePositions = positions.map(pos => {
+    const asset = symbolToAsset(pos.symbol);
+    const direction = pos.holdSide.toLowerCase() === "long" ? "long" : "short";
+    const matchingTrade = openTrades.find(t => 
+      t.asset.toUpperCase() === asset.toUpperCase() && 
+      t.direction === direction
+    );
+    return {
+      asset,
+      symbol: pos.symbol,
+      direction: pos.holdSide,
+      entryPrice: parseFloat(pos.openPriceAvg || "0"),
+      markPrice: parseFloat(pos.markPrice || "0"),
+      quantity: parseFloat(pos.total || "0"),
+      unrealizedPnl: parseFloat(pos.unrealizedPL || "0"),
+      leverage: parseInt(pos.leverage || "1"),
+      liquidationPrice: parseFloat(pos.liquidationPrice || "0"),
+      marginMode: pos.marginMode,
+      tradeId: matchingTrade ? matchingTrade.id : null,
+    };
+  });
 
   res.json({
     spotAssets: spotAssets.map(a => ({

@@ -7,5 +7,6 @@ declare module "express-session" {
     uid?: string;
     username?: string | null;
     userId?: string | null;
+    explicitLogout?: boolean;
   }
 }

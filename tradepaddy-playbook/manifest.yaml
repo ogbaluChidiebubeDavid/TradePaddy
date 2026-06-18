@@ -1,0 +1,58 @@
+name: tradepaddy-adaptive-regime
+display_name: "TradePaddy Adaptive Regime"
+version: "0.1.0"
+description: "Adaptive market regime strategy switching between trend-following and mean reversion"
+long_description: |
+  This Playbook is an adaptive market regime trading strategy designed for contract markets. The core thesis is that markets shift between structured directional trends and sideways consolidation, and that different trading styles are required for each phase. Rather than sticking to a single rigid mode, it aim to capture the dominant behavior by dynamically switching between trend-following and mean-reversion rules depending on the prevailing state of volatility.
+
+  Entry decisions are driven by classification of the market phase. When the trend strength indicator points to a strong directional regime, the strategy enters long when shorter-term moving averages lead longer-term moving averages upward, and enters short when they cross downward. Conversely, when the market exhibits range-bound behavior, the strategy switches to mean reversion, entering long at oversold extremes and entering short at overbought extremes to exploit price snapback.
+
+  Exit logic adapts to the active mode. In the trend-following regime, positions close when momentum fades or the crossover reverses. In the mean-reversion regime, positions close when the price reverts back to the average or hits the opposite boundary. It does not use fixed stop loss parameters, relying instead on state transitions to close trades and mitigate drawdown risk.
+
+  Subscribers can adjust two settings: leverage and margin budget. The leverage parameter dictates how large each trade size is scaled relative to the capital pool, where higher values expand the potential gains and losses without altering the underlying entry rules. The margin budget acts as the capital allocation limit for this strategy and is used to calculate net returns.
+
+  This Playbook will underperform in high-noise transitional phases where the regime shifts repeatedly, leading to whipsaws. Gap moves around major macroeconomic data releases can trigger executions at unsuitable prices. Past performance is no guarantee of future results, and subscribers can lose money in unfavorable conditions during volatile cycles.
+market_type: contract
+trading_symbols: ["BTCUSDT"]
+tags: ["regime", "trend", "mean-reversion", "btc", "contract"]
+decision_mode: deterministic
+backtest_support: full
+runtime_profile: deterministic
+execution_mode: signal_only
+follow_trade_supported: false
+
+strategy_config:
+  trading_symbols: ["BTCUSDT"]
+  leverage: 3
+  margin_budget: "100"
+  fast_period: 10
+  slow_period: 30
+  bb_period: 20
+  bb_std: 2.0
+  adx_period: 14
+  trend_threshold: 25
+  range_threshold: 20
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30
+
+user_config_schema:
+  trading_symbols:
+    type: array
+    item_type: string
+    default: ["BTCUSDT"]
+    options: ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+    min_items: 1
+    max_items: 1
+    label: "Trading symbol"
+  leverage:
+    type: integer
+    default: 3
+    min: 1
+    max: 10
+    label: "Leverage"
+  margin_budget:
+    type: string
+    default: "100"
+    pattern: "^[0-9]+(\\.[0-9]+)?$"
+    label: "Margin budget USDT"

@@ -45,6 +45,7 @@ router.post("/analysis", async (req, res): Promise<void> => {
       technicalSignals: aiResult.technicalSignals,
       onchainSignals: aiResult.onchainSignals,
       newsSignals: aiResult.newsSignals,
+      opportunities: aiResult.opportunities,
     })
     .returning();
 
@@ -58,30 +59,26 @@ router.get("/analysis/opportunities/top", async (_req, res): Promise<void> => {
     .orderBy(desc(marketAnalysesTable.createdAt))
     .limit(50);
 
-  // Get unique assets, take most recent per asset, sort by confidence
+  // Get unique assets, take most recent per asset
   const byAsset = new Map<string, typeof analyses[0]>();
   for (const a of analyses) {
     if (!byAsset.has(a.asset)) byAsset.set(a.asset, a);
   }
 
-  const opportunities = Array.from(byAsset.values())
-    .filter((a) => a.recommendation === "buy" || a.recommendation === "hold")
-    .sort((a, b) => parseFloat(b.confidenceScore) - parseFloat(a.confidenceScore))
-    .slice(0, 8)
-    .map((a) => ({
-      id: a.id,
-      asset: a.asset,
-      bullishScore: parseFloat(a.bullishScore),
-      bearishScore: parseFloat(a.bearishScore),
-      confidenceScore: parseFloat(a.confidenceScore),
-      riskScore: parseFloat(a.riskScore),
-      recommendation: a.recommendation,
-      summary: a.summary,
-      analysisId: a.id,
-      createdAt: a.createdAt.toISOString(),
-    }));
+  // Extract all opportunities from those analyses
+  const oppsList = [];
+  for (const a of byAsset.values()) {
+    if (Array.isArray(a.opportunities)) {
+      for (const opp of a.opportunities) {
+        oppsList.push(opp);
+      }
+    }
+  }
 
-  res.json(opportunities);
+  // Sort by confidence descending
+  oppsList.sort((a, b) => b.confidence - a.confidence);
+
+  res.json(oppsList);
 });
 
 router.get("/analysis/:id", async (req, res): Promise<void> => {
@@ -117,8 +114,75 @@ function formatAnalysis(a: typeof marketAnalysesTable.$inferSelect) {
     technicalSignals: a.technicalSignals ?? {},
     onchainSignals: a.onchainSignals ?? {},
     newsSignals: a.newsSignals ?? {},
+    opportunities: a.opportunities ?? [],
     createdAt: a.createdAt.toISOString(),
   };
 }
+
+router.get("/market/candles", async (req, res): Promise<void> => {
+  const asset = String(req.query.asset || "BTC").toUpperCase();
+  const granularity = String(req.query.granularity || "1H");
+  const limit = req.query.limit ? String(req.query.limit) : "200";
+  const startTime = req.query.startTime ? String(req.query.startTime) : undefined;
+  const endTime = req.query.endTime ? String(req.query.endTime) : undefined;
+
+  const symbol = `${asset}USDT_UMCBL`;
+  try {
+    const params: Record<string, string> = {
+      symbol,
+      productType: "USDT-FUTURES",
+      granularity,
+      limit,
+    };
+    if (startTime) params.startTime = startTime;
+    if (endTime) params.endTime = endTime;
+
+    const queryStr = new URLSearchParams(params).toString();
+    const bitgetRes = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?${queryStr}`);
+    const data = await bitgetRes.json() as { code: string; data?: any[][]; msg?: string };
+    
+    if (data.code === "00000" && Array.isArray(data.data)) {
+      const formatted = data.data.map(c => ({
+        time: parseInt(c[0]),
+        open: parseFloat(c[1]),
+        high: parseFloat(c[2]),
+        low: parseFloat(c[3]),
+        close: parseFloat(c[4]),
+        volume: parseFloat(c[5]),
+      })).reverse();
+      res.json(formatted);
+      return;
+    }
+    throw new Error(data.msg || "Failed to fetch candles");
+  } catch (err) {
+    console.error("Candles fetch failed:", err);
+    // Generate mock candles
+    const limitNum = parseInt(limit) || 100;
+    const endTs = endTime ? parseInt(endTime) : Date.now();
+    const startTs = startTime ? parseInt(startTime) : endTs - limitNum * 3600 * 1000;
+    const step = (endTs - startTs) / limitNum;
+    
+    const mockCandles = [];
+    let price = asset === "BTC" ? 65474.00 : asset === "ETH" ? 1783.17 : asset === "SOL" ? 73.15 : asset === "XRP" ? 1.21 : asset === "ADA" ? 0.1707 : asset === "DOGE" ? 0.0868 : 1.0;
+    for (let i = 0; i < limitNum; i++) {
+      const ts = startTs + i * step;
+      const open = price;
+      const change = (Math.random() - 0.49) * (price * 0.015);
+      const close = price + change;
+      const high = Math.max(open, close) + Math.random() * (price * 0.005);
+      const low = Math.min(open, close) - Math.random() * (price * 0.005);
+      price = close;
+      mockCandles.push({
+        time: ts,
+        open,
+        high,
+        low,
+        close,
+        volume: Math.random() * 1000,
+      });
+    }
+    res.json(mockCandles);
+  }
+});
 
 export default router;

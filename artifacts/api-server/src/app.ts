@@ -5,6 +5,8 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+import path from "path";
+
 const app: Express = express();
 
 app.use(
@@ -57,5 +59,14 @@ app.use(
 );
 
 app.use("/api", router);
+
+// Serve static frontend files in production
+if (process.env.NODE_ENV === "production") {
+  const publicPath = path.resolve(__dirname, "../../tradepaddy/dist/public");
+  app.use(express.static(publicPath));
+  app.get("/*splat", (req, res) => {
+    res.sendFile(path.join(publicPath, "index.html"));
+  });
+}
 
 export default app;

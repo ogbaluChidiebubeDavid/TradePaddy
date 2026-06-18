@@ -27,14 +27,19 @@ router.post("/auth/connect", async (req, res): Promise<void> => {
 
     req.session.bitget = creds;
     req.session.uid = validation.uid;
+    req.session.explicitLogout = undefined;
 
     // username: prefer real Bitget nick, then userId, then null
     const username = userInfo.nick || (userInfo.userId ? `UID ${userInfo.userId}` : null);
     req.session.username = username;
     req.session.userId = userInfo.userId || null;
 
-    // Auto-sync trade history in background (non-blocking)
-    syncBitgetData(creds).catch(() => { /* non-blocking */ });
+    // Sync trade history immediately to database before completing auth connection
+    try {
+      await syncBitgetData(creds);
+    } catch (syncErr) {
+      console.error("Failed to sync Bitget data during connection:", syncErr);
+    }
 
     res.json({
       connected: true,
@@ -49,12 +54,45 @@ router.post("/auth/connect", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/disconnect", (req, res): void => {
-  req.session.destroy(() => {
-    res.json({ connected: false });
-  });
+  req.session.bitget = undefined;
+  req.session.uid = undefined;
+  req.session.username = undefined;
+  req.session.userId = undefined;
+  req.session.explicitLogout = true;
+  res.json({ connected: false });
 });
 
-router.get("/auth/me", (req, res): void => {
+router.get("/auth/me", async (req, res): Promise<void> => {
+  if (
+    !req.session.bitget &&
+    !req.session.explicitLogout &&
+    process.env.BITGET_API_KEY &&
+    process.env.BITGET_SECRET_KEY &&
+    process.env.BITGET_PASSPHRASE
+  ) {
+    try {
+      const creds = {
+        apiKey: process.env.BITGET_API_KEY,
+        secretKey: process.env.BITGET_SECRET_KEY,
+        passphrase: process.env.BITGET_PASSPHRASE,
+      };
+      const [validation, userInfo] = await Promise.all([
+        validateCredentials(creds),
+        getUserInfo(creds),
+      ]);
+      req.session.bitget = creds;
+      req.session.uid = validation.uid;
+      const username = userInfo.nick || (userInfo.userId ? `UID ${userInfo.userId}` : null);
+      req.session.username = username;
+      req.session.userId = userInfo.userId || null;
+
+      // Sync data in background (non-blocking)
+      syncBitgetData(creds).catch(() => {});
+    } catch (err) {
+      console.error("Auto-connect from environment variables failed:", err);
+    }
+  }
+
   if (req.session.bitget) {
     res.json({
       connected: true,
