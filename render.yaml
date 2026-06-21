@@ -16,9 +16,4 @@ services:
         value: 10000
       - key: QWEN_API_KEY
         sync: false
-      - key: BITGET_API_KEY
-        sync: false
-      - key: BITGET_SECRET_KEY
-        sync: false
-      - key: BITGET_PASSPHRASE
-        sync: false
+
