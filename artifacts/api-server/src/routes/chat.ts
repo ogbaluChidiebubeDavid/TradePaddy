@@ -91,6 +91,23 @@ router.post("/chat/:sessionId/messages", async (req, res): Promise<void> => {
     .orderBy(chatMessagesTable.createdAt)
     .limit(10);
 
+  // Check if user is referencing a trade link or ID
+  let referencedTrade: any = undefined;
+  const tradeIdMatch = parsed.data.content.match(/(?:share\/trade\/|trade\/|trade\s+#?|#)(\d+)/i);
+  if (tradeIdMatch) {
+    const tradeId = parseInt(tradeIdMatch[1], 10);
+    if (!isNaN(tradeId)) {
+      const [trade] = await db
+        .select()
+        .from(tradesTable)
+        .where(eq(tradesTable.id, tradeId))
+        .limit(1);
+      if (trade) {
+        referencedTrade = trade;
+      }
+    }
+  }
+
   // Get real trade data from DB (synced from Bitget)
   const [trades, patterns] = await Promise.all([
     db.select().from(tradesTable).orderBy(desc(tradesTable.createdAt)).limit(100),
@@ -158,6 +175,7 @@ router.post("/chat/:sessionId/messages", async (req, res): Promise<void> => {
     openPositionsStr,
     livePortfolio,
     dataSource: creds ? "Real Bitget account data" : "Demo data",
+    referencedTrade,
   };
 
   const aiContent = await generateChatResponse(

@@ -488,6 +488,7 @@ export async function generateChatResponse(
     totalPnl?: number;
     openPositions?: number;
     recentPatterns?: string[];
+    referencedTrade?: any;
   }
 ): Promise<string> {
   const systemPrompt = `You are TradePaddy AI, an expert AI trading mentor and analyst. You have deep knowledge of crypto markets, technical analysis, behavioral finance, and trading psychology.
@@ -498,6 +499,29 @@ Context about this user:
 - Total PnL: ${context.totalPnl !== undefined ? (context.totalPnl >= 0 ? "+" : "") + "$" + context.totalPnl.toFixed(2) : "N/A"}
 - Open Positions: ${context.openPositions ?? 0}
 - Recent Behavioral Patterns: ${context.recentPatterns?.join(", ") ?? "None detected"}
+
+${context.referencedTrade ? `The user is specifically asking about a trade they shared/referenced. Here are the details of this trade:
+- Trade ID: ${context.referencedTrade.id}
+- Asset: ${context.referencedTrade.asset}
+- Direction: ${context.referencedTrade.direction}
+- Status: ${context.referencedTrade.status}
+- Entry Price: $${parseFloat(context.referencedTrade.entryPrice).toFixed(4)}
+- Exit Price: ${context.referencedTrade.exitPrice ? `$${parseFloat(context.referencedTrade.exitPrice).toFixed(4)}` : "N/A"}
+- Quantity: ${context.referencedTrade.quantity}
+- Stop Loss: ${context.referencedTrade.stopLoss ? `$${parseFloat(context.referencedTrade.stopLoss).toFixed(4)}` : "N/A"}
+- Take Profit: ${context.referencedTrade.takeProfit ? `$${parseFloat(context.referencedTrade.takeProfit).toFixed(4)}` : "N/A"}
+- PnL: ${context.referencedTrade.pnl ? `${parseFloat(context.referencedTrade.pnl) >= 0 ? "+" : ""}$${parseFloat(context.referencedTrade.pnl).toFixed(2)}` : "N/A"}
+- PnL Percent: ${context.referencedTrade.pnlPercent ? `${parseFloat(context.referencedTrade.pnlPercent).toFixed(2)}%` : "N/A"}
+- Entry Reason: ${context.referencedTrade.entryReason}
+- Exit Reason: ${context.referencedTrade.exitReason ?? "N/A"}
+- Market Conditions: ${context.referencedTrade.marketConditions}
+- AI Recommendation at Entry: ${context.referencedTrade.aiRecommendation}
+- User Action Relative to AI: ${context.referencedTrade.userAction}
+- Order Type: ${context.referencedTrade.orderType}
+- Created At: ${context.referencedTrade.createdAt}
+- Closed At: ${context.referencedTrade.closedAt ?? "N/A"}
+
+Please analyze this trade specifically. Critically evaluate their entry/exit timing, compliance/ignoring of AI recommendation, position sizing relative to stop loss/take profit, and emotional/behavioral errors indicated by entry/exit reasons and market conditions.` : ""}
 
 Always structure your response with:
 1. **Summary** — direct answer to their question
